@@ -1,6 +1,8 @@
 function! switch#Switch(definitions)
   silent! normal! zO
 
+  echomsg "switch.vim debug begin -------------------------"
+
   try
     let saved_cursor = getpos('.')
     let min_match    = switch#match#Null()
@@ -24,6 +26,7 @@ function! switch#Switch(definitions)
       return 0
     endif
   finally
+    echomsg "switch.vim debug end -------------------------"
     call setpos('.', saved_cursor)
   endtry
 endfunction

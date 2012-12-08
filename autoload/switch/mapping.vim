@@ -72,6 +72,8 @@ function! switch#mapping#Match() dict
         let match_end = col('.')
       endif
 
+      echomsg 'Pattern positions: '.string([col, match_start, match_end])
+
       if match_start > col || match_end <= col
         " then the cursor is not in the pattern
         continue
@@ -101,11 +103,15 @@ function! switch#mapping#Replace(match) dict
       let pattern         = escape(pattern, '/')
       let sub_replacement = escape(sub_replacement, '/&')
 
+      echomsg "Dict replacement: s/".pattern.'/'.sub_replacement.'/ge'
+
       exe 's/'.pattern.'/'.sub_replacement.'/ge'
     endfor
   else
     let pattern     = escape(pattern, '/')
     let replacement = escape(replacement, '/&')
+
+    echomsg "Normal replacement: s/".pattern.'/'.replacement.'/ge'
 
     exe 's/'.pattern.'/'.replacement.'/'
   endif
