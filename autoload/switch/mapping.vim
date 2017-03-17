@@ -40,6 +40,7 @@ function! switch#mapping#Match() dict
   let match_start  = -1
   let match_end    = -1
   let match_length = -1
+  let best_match = switch#match#Null()
 
   for [pattern, replacement] in items(self.definitions)
     try
@@ -47,10 +48,17 @@ function! switch#mapping#Match() dict
       let [_buf, lnum, col, _off] = saved_cursor
 
       " try to find the pattern nearest to the cursor
-      call search(pattern, 'bcW', lnum)
-      if search(pattern, 'cW', lnum) <= 0
-        " not found, try the next pattern
-        continue
+      if !g:switch_find_fistright_match
+        call search(pattern, 'bcW', lnum)
+        if search(pattern, 'cW', lnum) <= 0
+          " not found, try the next pattern
+          continue
+        endif
+      else
+        if search(pattern, 'cW', lnum) == 0
+          " there is no match to the right
+          continue
+        endif
       endif
       let match_start = col('.')
 
@@ -74,20 +82,27 @@ function! switch#mapping#Match() dict
       endif
       let &whichwrap = original_whichwrap
 
-      if match_start > col || match_end <= col
+      if !g:switch_find_fistright_match && (match_start > col || match_end <= col)
         " then the cursor is not in the pattern
         continue
       else
-        " a match has been found
-        return switch#match#New(self, pattern, match_start, match_end)
+        " a match has been found, search more in case of firstright/return first otherwise
+        let match = switch#match#New(self, pattern, match_start, match_end)
+        if !g:switch_find_fistright_match 
+          return match
+        else
+          if match.IsLefter(best_match)
+            let best_match = match
+          endif
+          continue
+        endif
       endif
     finally
       call setpos('.', saved_cursor)
     endtry
   endfor
 
-  " no match found, return a null match
-  return switch#match#Null()
+  return best_match
 endfunction
 
 " Replaces the pattern from the match data with its replacement. Takes care of

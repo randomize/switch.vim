@@ -6,6 +6,10 @@ let g:loaded_switch = '0.3.0' " version number
 let s:keepcpo = &cpo
 set cpo&vim
 
+if !exists('g:switch_find_fistright_match')
+  let g:switch_find_fistright_match = 0
+endif
+
 if !exists('g:switch_mapping')
   let g:switch_mapping = 'gs'
 endif

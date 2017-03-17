@@ -21,6 +21,7 @@ function! switch#match#Null()
         \ 'length':  -1,
         \
         \ 'IsBetter': function('switch#match#IsBetter'),
+        \ 'IsLefter': function('switch#match#IsLefter'),
         \ 'Replace':  function('switch#match#Replace'),
         \ 'IsNull':   function('switch#match#IsNull'),
         \ }
@@ -37,6 +38,18 @@ function! switch#match#IsBetter(other) dict
   elseif a:other.IsNull()
     return 1
   elseif self.length < a:other.length
+    return 1
+  else
+    return 0
+  endif
+endfunction
+
+function! switch#match#IsLefter(other) dict
+  if self.IsNull() && a:other.IsNull()
+    return 0
+  elseif a:other.IsNull()
+    return 1
+  elseif self.start < a:other.start
     return 1
   else
     return 0

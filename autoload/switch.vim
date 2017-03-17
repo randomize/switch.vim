@@ -22,7 +22,11 @@ function! switch#Switch(...)
       let match = mapping.Match()
 
       if !match.IsNull()
-        if g:switch_find_smallest_match
+        if g:switch_find_fistright_match
+          if match.IsLefter(min_match)
+            let min_match = match
+          endif
+        elseif g:switch_find_smallest_match
           if match.IsBetter(min_match)
             let min_match = match
           endif
