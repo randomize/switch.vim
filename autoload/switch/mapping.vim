@@ -52,7 +52,6 @@ function! switch#mapping#Match() dict
         " not found, try the next pattern
         continue
       endif
-
       let match_start = col('.')
 
       " find the end of the pattern
@@ -79,6 +78,7 @@ function! switch#mapping#Match() dict
         " then the cursor is not in the pattern
         continue
       else
+        " a match has been found
         return switch#match#New(self, pattern, match_start, match_end)
       endif
     finally
@@ -86,6 +86,7 @@ function! switch#mapping#Match() dict
     endtry
   endfor
 
+  " no match found, return a null match
   return switch#match#Null()
 endfunction
 
