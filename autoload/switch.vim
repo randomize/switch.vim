@@ -19,21 +19,10 @@ function! switch#Switch(...)
     let definitions  = switch#util#FlatMap(copy(definitions), 'switch#mapping#Process(v:val, '.string(options).')')
 
     for mapping in definitions
-
-      " Take shortest mapping under cursor as highest priority
       let match = mapping.Match()
 
-      if g:switch_find_fistright_match && match.IsNull()
-        " Use first right alg in case nothing under cursor
-        let match = mapping.MatchRight()
-      endif
-
       if !match.IsNull()
-        if g:switch_find_fistright_match
-          if match.IsLefter(min_match)
-            let min_match = match
-          endif
-        elseif g:switch_find_smallest_match
+        if g:switch_find_smallest_match
           if match.IsBetter(min_match)
             let min_match = match
           endif
@@ -44,6 +33,32 @@ function! switch#Switch(...)
         endif
       endif
     endfor
+
+    if min_match.IsNull() && g:switch_find_fallback_match_cursor_right
+      for mapping in definitions
+
+        let match = mapping.MatchRight()
+
+        if !match.IsNull()
+          if match.IsLefterAndBetter(min_match)
+            let min_match = match
+          endif
+        endif
+      endfor
+    endif
+
+    if min_match.IsNull() && g:switch_find_fallback_match_line_start
+      for mapping in definitions
+
+        let match = mapping.MatchBegining()
+
+        if !match.IsNull()
+          if match.IsLefterAndBetter(min_match)
+            let min_match = match
+          endif
+        endif
+      endfor
+    endif
 
     if !min_match.IsNull()
       call min_match.Replace()

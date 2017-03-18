@@ -92,8 +92,7 @@ endfunction
 
 
 " Alternative algorithm MatchRight
-" Tries to find leftmost match relative to cursor from the righti,
-" if none found it uses leftmost match from beginning of the line
+" Tries to find leftmost match relative to cursor from its right
 "
 " Returns a Match object with data for the match. Returns a null match if the
 " pattern is not found or the cursor is not in it.
@@ -103,25 +102,16 @@ function! switch#mapping#MatchRight() dict
   let match_end    = -1
   let match_length = -1
   let best_match = switch#match#Null()
-  let good_too_match = switch#match#Null() " this one is used if no best found
 
   for [pattern, replacement] in items(self.definitions)
     try
       let saved_cursor = getpos('.')
       let [_buf, lnum, col, _off] = saved_cursor
-      let fallb = 0
 
-      " try to find the pattern nearest to the cursor
+      " try to find right pattern nearest to the cursor
       if search(pattern, 'cW', lnum) == 0
-        " there is no match to the right
-        call setpos('.',[_buf, lnum, 1, _off])
-        if search(pattern, 'cW', lnum) <= 0
-          " there is no match nor to the left
-          continue
-        else
-          " there is match to the right, enable fallback
-          let fallb = 1
-        endif
+        " there is no match
+        continue
       endif
 
       let match_start = col('.')
@@ -149,26 +139,79 @@ function! switch#mapping#MatchRight() dict
       " a match has been found
       let match = switch#match#New(self, pattern, match_start, match_end)
       
-      if fallb
-        if match.IsLefter(good_too_match)
-          let good_too_match = match
-        endif
-      else
-        if match.IsLefter(best_match)
-          let best_match = match
-        endif
+      if match.IsLefter(best_match)
+        let best_match = match
       endif
-
 
     finally
       call setpos('.', saved_cursor)
     endtry
   endfor
 
-  if best_match.IsNull()
-    return good_too_match
-  else
-    return best_match
+  return best_match
+
+endfunction
+
+" Alternative algorithm MatchBegining
+" tries to find leftmost match from beginning of the line
+"
+" Returns a Match object with data for the match. Returns a null match if the
+" pattern is not found or the cursor is not in it.
+"
+function! switch#mapping#MatchBegining() dict
+  let match_start  = -1
+  let match_end    = -1
+  let match_length = -1
+  let best_match = switch#match#Null()
+
+  for [pattern, replacement] in items(self.definitions)
+    try
+      let saved_cursor = getpos('.')
+      let [_buf, lnum, col, _off] = saved_cursor
+
+      call setpos('.',[_buf, lnum, 1, _off])
+
+      " find first match from beginnig of line
+      if search(pattern, 'cW', lnum) == 0
+        " there is no match nor to the left
+        continue
+      endif
+
+      let match_start = col('.')
+
+      " find the end of the pattern
+      call search(pattern, 'cWe', lnum)
+      let match_end = col('.')
+
+      " set the end of the pattern to the next character, or EOL.
+      "
+      " whichwrap logic is for multibyte characters. The 'whichwrap' option is
+      " reset to the default in order to avoid "l" wrapping around.
+      let original_whichwrap = &whichwrap
+      set whichwrap&vim
+      silent! normal! l
+
+      if col('.') == match_end
+        " no movement, we must be at the end
+        let match_end = col('$')
+      else
+        let match_end = col('.')
+      endif
+      let &whichwrap = original_whichwrap
+
+      " a match has been found
+      let match = switch#match#New(self, pattern, match_start, match_end)
+      
+      if match.IsLefter(best_match)
+        let best_match = match
+      endif
+
+    finally
+      call setpos('.', saved_cursor)
+    endtry
+  endfor
+
+  return best_match
 
 endfunction
 
@@ -251,6 +294,7 @@ function! s:ProcessDictMapping(definition)
         \
         \ 'Match':   function('switch#mapping#Match'),
         \ 'MatchRight':   function('switch#mapping#MatchRight'),
+        \ 'MatchBegining':   function('switch#mapping#MatchBegining'),
         \ 'Replace': function('switch#mapping#Replace'),
         \ }
 

@@ -6,10 +6,6 @@ let g:loaded_switch = '0.3.0' " version number
 let s:keepcpo = &cpo
 set cpo&vim
 
-if !exists('g:switch_find_fistright_match')
-  let g:switch_find_fistright_match = 0
-endif
-
 if !exists('g:switch_mapping')
   let g:switch_mapping = 'gs'
 endif
@@ -20,6 +16,14 @@ endif
 
 if !exists('g:switch_find_smallest_match')
   let g:switch_find_smallest_match = 1
+endif
+
+if !exists('g:switch_find_fallback_match_cursor_right')
+  let g:switch_find_fallback_match_cursor_right = 0
+endif
+
+if !exists('g:switch_find_fallback_match_line_start')
+  let g:switch_find_fallback_match_line_start = 0
 endif
 
 let g:switch_builtins =
