@@ -40,7 +40,6 @@ function! switch#mapping#Match() dict
   let match_start  = -1
   let match_end    = -1
   let match_length = -1
-  let best_match = switch#match#Null()
 
   for [pattern, replacement] in items(self.definitions)
     try
@@ -48,18 +47,12 @@ function! switch#mapping#Match() dict
       let [_buf, lnum, col, _off] = saved_cursor
 
       " try to find the pattern nearest to the cursor
-      if !g:switch_find_fistright_match
-        call search(pattern, 'bcW', lnum)
-        if search(pattern, 'cW', lnum) <= 0
-          " not found, try the next pattern
-          continue
-        endif
-      else
-        if search(pattern, 'cW', lnum) == 0
-          " there is no match to the right
-          continue
-        endif
+      call search(pattern, 'bcW', lnum)
+      if search(pattern, 'cW', lnum) <= 0
+        " not found, try the next pattern
+        continue
       endif
+
       let match_start = col('.')
 
       " find the end of the pattern
@@ -82,27 +75,100 @@ function! switch#mapping#Match() dict
       endif
       let &whichwrap = original_whichwrap
 
-      if !g:switch_find_fistright_match && (match_start > col || match_end <= col)
+      if match_start > col || match_end <= col
         " then the cursor is not in the pattern
         continue
       else
-        " a match has been found, search more in case of firstright/return first otherwise
-        let match = switch#match#New(self, pattern, match_start, match_end)
-        if !g:switch_find_fistright_match 
-          return match
-        else
-          if match.IsLefter(best_match)
-            let best_match = match
-          endif
-          continue
-        endif
+        return switch#match#New(self, pattern, match_start, match_end)
       endif
     finally
       call setpos('.', saved_cursor)
     endtry
   endfor
 
-  return best_match
+  return switch#match#Null()
+endfunction
+
+
+" Alternative algorithm MatchRight
+" Tries to find leftmost match relative to cursor from the righti,
+" if none found it uses leftmost match from beginning of the line
+"
+" Returns a Match object with data for the match. Returns a null match if the
+" pattern is not found or the cursor is not in it.
+"
+function! switch#mapping#MatchRight() dict
+  let match_start  = -1
+  let match_end    = -1
+  let match_length = -1
+  let best_match = switch#match#Null()
+  let good_too_match = switch#match#Null() " this one is used if no best found
+
+  for [pattern, replacement] in items(self.definitions)
+    try
+      let saved_cursor = getpos('.')
+      let [_buf, lnum, col, _off] = saved_cursor
+      let fallb = 0
+
+      " try to find the pattern nearest to the cursor
+      if search(pattern, 'cW', lnum) == 0
+        " there is no match to the right
+        call setpos('.',[_buf, lnum, 1, _off])
+        if search(pattern, 'cW', lnum) <= 0
+          " there is no match nor to the left
+          continue
+        else
+          " there is match to the right, enable fallback
+          let fallb = 1
+        endif
+      endif
+
+      let match_start = col('.')
+
+      " find the end of the pattern
+      call search(pattern, 'cWe', lnum)
+      let match_end = col('.')
+
+      " set the end of the pattern to the next character, or EOL.
+      "
+      " whichwrap logic is for multibyte characters. The 'whichwrap' option is
+      " reset to the default in order to avoid "l" wrapping around.
+      let original_whichwrap = &whichwrap
+      set whichwrap&vim
+      silent! normal! l
+
+      if col('.') == match_end
+        " no movement, we must be at the end
+        let match_end = col('$')
+      else
+        let match_end = col('.')
+      endif
+      let &whichwrap = original_whichwrap
+
+      " a match has been found
+      let match = switch#match#New(self, pattern, match_start, match_end)
+      
+      if fallb
+        if match.IsLefter(good_too_match)
+          let good_too_match = match
+        endif
+      else
+        if match.IsLefter(best_match)
+          let best_match = match
+        endif
+      endif
+
+
+    finally
+      call setpos('.', saved_cursor)
+    endtry
+  endfor
+
+  if best_match.IsNull()
+    return good_too_match
+  else
+    return best_match
+
 endfunction
 
 " Replaces the pattern from the match data with its replacement. Takes care of
@@ -183,6 +249,7 @@ function! s:ProcessDictMapping(definition)
         \ 'definitions': a:definition,
         \
         \ 'Match':   function('switch#mapping#Match'),
+        \ 'MatchRight':   function('switch#mapping#MatchRight'),
         \ 'Replace': function('switch#mapping#Replace'),
         \ }
 

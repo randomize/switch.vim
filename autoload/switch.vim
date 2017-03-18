@@ -19,7 +19,14 @@ function! switch#Switch(...)
     let definitions  = switch#util#FlatMap(copy(definitions), 'switch#mapping#Process(v:val, '.string(options).')')
 
     for mapping in definitions
+
+      " Take shortest mapping under cursor as highest priority
       let match = mapping.Match()
+
+      if g:switch_find_fistright_match && match.IsNull()
+        " Use first right alg in case nothing under cursor
+        let match = mapping.MatchRight()
+      endif
 
       if !match.IsNull()
         if g:switch_find_fistright_match
